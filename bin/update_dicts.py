@@ -70,7 +70,7 @@ async def main():
                 print('Grabbing', s_target, 'IDs.')
                 multiple_ids = ''
                 for a in range(0, s_target):
-                    multiple_ids += string(skills[i + a])
+                    multiple_ids += skills[i + a]
                     multiple_ids += ','
                 html = 'https://api.guildwars2.com/v2/skills?ids=' + multiple_ids
                 print(html)
@@ -107,7 +107,7 @@ async def main():
                 print('Grabbing', i_target, 'IDs.')
                 multiple_ids = ''
                 for a in range(0, i_target):
-                    multiple_ids += string(items[i + a])
+                    multiple_ids += items[i + a]
                     multiple_ids += ','
                 html = 'https://api.guildwars2.com/v2/items?ids=' + multiple_ids
                 print(html)
