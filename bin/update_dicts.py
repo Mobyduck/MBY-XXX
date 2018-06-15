@@ -22,12 +22,16 @@ async def fetch_list(session, url):
         return list
 
 
-async def fetch_name(session, url):
-    '''Returns the name paramater of the given page.'''
+async def fetch_name(session, url, quantity=10):
+    '''Returns a list with the name paramater of the given IDs.'''
+    names = []
     async with session.get(url) as response:
         a = await response.text()
         b = json.loads(a)
-        return b['name']
+        for i in range(quantity):
+            names.append(b[i]['name'])
+            print(b[i]['name'], 'fetched from list.')
+        return names
 
 
 def save_to_file(file, dict):
@@ -39,31 +43,79 @@ def save_to_file(file, dict):
 
 async def main():
     async with aiohttp.ClientSession() as session:
+        # Amount of IDs to be grabbed at a time
+        s_target = 10
         # Create the skills dictionary
         skills = await fetch_list(session, 'https://api.guildwars2.com/v2/skills')
         for i in range(len(skills)):
             if skills[i] in skills_dictionary:
                 print('ID', skills[i], 'already found in file. Skipping to next.')
-            else:
-                html = 'https://api.guildwars2.com/v2/skills/' + str(skills[i])
+            elif (len(skills) - i) >= s_target:
+                # Create a string with all the 10 IDs
+                print('Grabbing', s_target, 'IDs.')
+                multiple_ids = ''
+                for a in range(0, s_target):
+                    multiple_ids += skills[i + a]
+                    multiple_ids += ','
+                html = 'https://api.guildwars2.com/v2/skills?ids=' + multiple_ids
                 print(html)
-                skill_name = await fetch_name(session, html)
-                skills_dictionary[skills[i]] = skill_name
+                skill_names = await fetch_name(session, html)
+                for a in range(0, s_target):
+                    skills_dictionary[skills[i + a]] = skill_names[a]
                 save_to_file('skills.data', skills_dictionary)
-                print(skills[i], 'saved to file.')
+                print(multiple_ids, 'saved to file.')
+                time.sleep(5)
+            else:
+                s_target = len(items) - i
+                print('Grabbing', s_target, 'IDs.')
+                multiple_ids = ''
+                for a in range(0, s_target):
+                    multiple_ids += string(skills[i + a])
+                    multiple_ids += ','
+                html = 'https://api.guildwars2.com/v2/skills?ids=' + multiple_ids
+                print(html)
+                skill_names = await fetch_name(session, html, s_target)
+                for a in range(0, s_target):
+                    skills_dictionary[skills[i + a]] = skill_names[a]
+                save_to_file('skills.data', skills_dictionary)
+                print(multiple_ids, 'saved to file.')
                 time.sleep(5)
         # Create the items dictionary
         items = await fetch_list(session, 'https://api.guildwars2.com/v2/items')
+        # Amount of IDs to be grabbed at a time
+        i_target = 10
         for i in range(len(items)):
             if items[i] in item_dictionary:
                 print('ID', items[i], 'already found in file. Skipping to next.')
-            else:
-                html = 'https://api.guildwars2.com/v2/items/' + str(items[i])
+            elif (len(items) - i) >= i_target:
+                # Create a string with all the 10 IDs
+                print('Grabbing', i_target, 'IDs.')
+                multiple_ids = ''
+                for a in range(0, i_target):
+                    multiple_ids += items[i + a]
+                    multiple_ids += ','
+                html = 'https://api.guildwars2.com/v2/items?ids=' + multiple_ids
                 print(html)
-                item_name = await fetch_name(session, html)
-                item_dictionary[items[i]] = item_name
+                item_names = await fetch_name(session, html)
+                for a in range(0, i_target):
+                    item_dictionary[items[i + a]] = item_names[a]
                 save_to_file('items.data', item_dictionary)
-                print(items[i], 'saved to file.')
+                print(multiple_ids, 'saved to file.')
+                time.sleep(5)
+            else:
+                i_target = len(items) - i
+                print('Grabbing', i_target, 'IDs.')
+                multiple_ids = ''
+                for a in range(0, i_target):
+                    multiple_ids += string(items[i + a])
+                    multiple_ids += ','
+                html = 'https://api.guildwars2.com/v2/items?ids=' + multiple_ids
+                print(html)
+                item_names = await fetch_name(session, html, i_target)
+                for a in range(0, i_target):
+                    item_dictionary[items[i + a]] = item_names[a]
+                save_to_file('items.data', item_dictionary)
+                print(multiple_ids, 'saved to file.')
                 time.sleep(5)
 
 # Variables
