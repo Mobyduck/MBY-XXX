@@ -1,5 +1,5 @@
 # For now this script will serve as the main interaction with the Guild Wars 2 API.
-# It should be able to grab any information from the site and return the relevant bits.
+# It
 
 import pickle
 import aiohttp
@@ -20,7 +20,7 @@ def load_dictionaries():
     return skills, items
 
 
-async def fetch_info(name, dict):
+async def fetch_info(name, dict, type='items'):
     """This function receives a skill or item name and checks against the dictionary.
     Returns False if not found, else returns tuple with desired information."""
     # First check if the skill exists
@@ -28,10 +28,14 @@ async def fetch_info(name, dict):
         return False
     # Start the session
     async with aiohttp.ClientSession() as session:
-        url = 'https://api.guildwars2.com/v2/skills/' + str(id)
+        url = 'https://api.guildwars2.com/v2/' + type + '/' + dict[name]
         async with session.get(url) as response:
             a = await response.text()
             b = json.loads(a)
-            print('Name:', b['name'])
-            print('Description:', b['description'])
-            print(b['icon'])
+            # Quick check to see if the object has a description field
+            try:
+                print(b['description'])
+            except KeyError:
+                b['description'] = 'No available description.'
+            print(b)
+            return b
