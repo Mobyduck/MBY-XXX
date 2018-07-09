@@ -1,14 +1,15 @@
 import discord
 import logging
 import pywars
+import guild_members
 
 logging.basicConfig(level=logging.DEBUG)
 
 TOKEN = '***'
 
-client = discord.Client()
+bot = discord.Client()
 
-@client.event
+@bot.event
 async def on_member_join(member):
     # This function is called when a new member joins the server
     if member.bot:
@@ -17,14 +18,14 @@ async def on_member_join(member):
         message = '''Hi there, {0}!\n
         \n
         Welcome!'''.format(member)
-        await client.send_message(member, message)
+        await bot.send_message(member, message)
 
 
-@client.event
+@bot.event
 async def on_message(message):
     # This event is called whenever a new message is sent to the server
     # we do not want the bot to reply to itself
-    if message.author == client.user:
+    if message.author == bot.user:
         return
 
     if message.content.startswith('!help'):
@@ -49,7 +50,7 @@ This includes name of all components and their prices in the auction house, if a
 **!price** *Name of Item*
 Returns information about the cost of the item you want.
 This includes from vendors and the auction house.""")
-        await client.send_message(message.author, embed=help_message)
+        await bot.send_message(message.author, embed=help_message)
 
     # !skill command
     # paramaters: !skill <name of the skill>
@@ -58,13 +59,13 @@ This includes from vendors and the auction house.""")
         cmd = message.content.split()
         if len(cmd) <= 1:
             msg = 'The correct command is "!skill <name of the skill>"'
-            await client.send_message(message.channel, msg)
+            await bot.send_message(message.channel, msg)
         else:
             del cmd[0]
             sk_name = ' '
             sk_name = sk_name.join(cmd)
             msg = 'The skill you are looking for is ' + sk_name
-            await client.send_message(message.channel, msg)
+            await bot.send_message(message.channel, msg)
 
     # !item command
     # paramaters: !item <name of the item>
@@ -73,44 +74,90 @@ This includes from vendors and the auction house.""")
         cmd = message.content.split()
         if len(cmd) <= 1:
             msg = 'The correct command is "!item <name of the item>"'
-            await client.send_message(message.channel, msg)
+            await bot.send_message(message.channel, msg)
         else:
             del cmd[0]
             it_name = ' '
             it_name = it_name.join(cmd)
-            it_info = await pywars.fetch_info(it_name, items_dictionary, type='items')
+            it_name = it_name.lower()
+            it_info = await pywars.fetch_item(it_name, items_dictionary)
             if it_info == False:
                 msg = 'No such item found. Be sure to type the name as it appears in the game.'
-                await client.send_message(message.channel, msg)
+                await bot.send_message(message.channel, msg)
             else:
                 # Create embed message
-                item = discord.Embed(type='rich', title=it_name, colour=rarity[it_info['rarity']], description=it_info['description'])
+                print(it_info['id'])
+                item = discord.Embed(type='rich', title=it_info['name'], colour=rarity[it_info['rarity']], description=it_info['description'])
                 item.set_thumbnail(url=it_info['icon'])
                 item.set_footer(text='Info provided by the Guild Wars 2 API v2.', icon_url='https://wiki.guildwars2.com/images/d/df/GW2Logo_new.png')
                 item.add_field(name='Rarity', value=it_info['rarity'])
                 item.add_field(name='Type', value=it_info['type'])
-                temp = it_name.split()
+                if it_info['extra_info']:
+                    item.add_field(name=it_info['extra_info_name'], value=it_info['extra_info'])
+                temp = it_info['name'].split()
                 it_wiki = '%20'
                 it_wiki = it_wiki.join(temp)
-                item.add_field(name='Wiki Link', value='https://wiki.guildwars2.com/wiki/' + it_wiki)
-                await client.send_message(message.channel, embed=item)
+                item.add_field(name='Wiki Link', value='https://wiki.guildwars2.com/wiki/' + it_wiki, inline=False)
+                await bot.send_message(message.channel, embed=item)
+
+    # !recipe command
+    if message.content.startswith('!recipe'):
+        cmd = message.content.split()
+        if len(cmd) <= 1:
+            msg = 'The correct command is "!recipe <name of the item>"'
+            await bot.send_message(message.channel, msg)
+        else:
+            del cmd[0]
+            rcp_name = ' '
+            rcp_name = rcp_name.join(cmd)
+            rcp_name = rcp_name.lower()
+            rcp_info, rcp_length = await pywars.fetch_recipes(rcp_name, items_dictionary, items_dictionary_id)
+            it_info = await pywars.fetch_item(rcp_name, items_dictionary)
+            if rcp_info == 0:
+                msg = 'No such item found. Be sure to type the name as it appears in the game.'
+                await bot.send_message(message.channel, msg)
+            elif rcp_info == 1:
+                msg = 'This item does not have a recipe in the system.'
+                await bot.send_message(message.channel, msg)
+            else:
+                title_em = 'Recipes for ' + rcp_name
+                description_em = "I've found " + str(rcp_length) + " recipes"
+                rcp_em = discord.Embed(type='rich', title=title_em, colour=rarity[it_info['rarity']], description=description_em)
+                rcp_em.set_thumbnail(url=it_info['icon'])
+                for i in range(rcp_length):
+                    ing_list = ''
+                    for y in range(len(rcp_info[i]['ingredients'])):
+                        ing_list = ing_list + items_dictionary_id[str(rcp_info[i]['ingredients'][y]['item_id'])] + ' x ' + str(rcp_info[i]['ingredients'][y]['count']) + '\n'
+                    cur_recipe = i + 1
+                    recipe_title_em = 'Recipe ' + str(cur_recipe)
+                    rcp_em.add_field(name=recipe_title_em, value=ing_list)
+                temp = it_info['name'].split()
+                it_wiki = '%20'
+                it_wiki = it_wiki.join(temp)
+                rcp_em.add_field(name='Wiki Link', value='https://wiki.guildwars2.com/wiki/' + it_wiki, inline=False)
+                rcp_em.set_footer(text='Info provided by the Guild Wars 2 API v2.', icon_url='https://wiki.guildwars2.com/images/d/df/GW2Logo_new.png')
+                await bot.send_message(message.channel, embed=rcp_em)
 
 
-@client.event
+@bot.event
 async def on_ready():
     # This event is called after a sucessful login
     print('-----------')
     print('Logged in as')
-    print(client.user.name)
-    print(client.user.id)
+    print(bot.user.name)
+    print(bot.user.id)
     print('-----------')
-    await client.edit_profile(username=bot_version)
-    print('Set username to', bot_version)
+    if bot.user.name != bot_version:
+        await bot.edit_profile(username=bot_version)
+        print('Set username to', bot_version)
+    bot_game = discord.Game(name='type !help')
+    await bot.change_presence(game=bot_game)
+
 
 
 # Setup
 ## Bot version
-bot_version = 'MBY-001'
+bot_version = 'MBY-003'
 bot_avatar = 'https://pbs.twimg.com/profile_images/1002920144883081216/hYtXo5ak_400x400.jpg'
 ## Skill and Item dictionaries
 skills_dictionary_id = {}
@@ -130,12 +177,23 @@ print('Pairs in Skills dictionary (ID first):', len(skills_dictionary_id))
 print('Pairs in Items dictionary (ID first):', len(items_dictionary_id))
 print('-----------')
 # Invert dictionaries so names come first
-skills_dictionary = {a: b for b, a in skills_dictionary_id.items()}
-items_dictionary = {a: b for b, a in items_dictionary_id.items()}
+# This should help stopping returning bad IDs when they have the same name value.
+for a, b in skills_dictionary_id.items():
+    b = b.lower()
+    if b not in skills_dictionary:
+        skills_dictionary[b] = a
+    else:
+        pass
+for a, b in items_dictionary_id.items():
+    b = b.lower()
+    if b not in items_dictionary:
+        items_dictionary[b] = a
+    else:
+        pass
 print('-----------')
 print('Dictionaries inverted')
 print('Pairs in Skills dictionary (name first):', len(skills_dictionary))
 print('Pairs in Items dictionary (name first):', len(items_dictionary))
 print('-----------')
 
-client.run(TOKEN)
+bot.run(TOKEN)

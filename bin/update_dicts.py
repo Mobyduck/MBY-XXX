@@ -12,6 +12,7 @@ import pickle
 
 
 async def fetch_list(session, url):
+    """Returns a list with all the IDs from the API"""
     async with session.get(url) as response:
         list = await response.text()
         list = list.replace(',','')
@@ -66,7 +67,7 @@ async def main():
                 print(multiple_ids, 'saved to file.')
                 time.sleep(5)
             else:
-                s_target = len(items) - i
+                s_target = len(skills) - i
                 print('Grabbing', s_target, 'IDs.')
                 multiple_ids = ''
                 for a in range(0, s_target):
